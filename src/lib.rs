@@ -78,8 +78,6 @@ impl EncodeHookConfigBuilder {
 pub struct EncodeHookConfig {
     matcher: Option<Box<dyn MatcherConfig>>,
     target: String,
-    // TODO: Add custom proxy rules
-    // TODO: Add support for custom headers
 }
 
 #[typetag::serde(name = "encode")]

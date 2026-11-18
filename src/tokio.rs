@@ -1,12 +1,13 @@
 use crate::EncodeHookConfig;
 use cel::Context;
 use vetis::{
-    Request, Response, VetisFutureResult,
+    HookPhases, Request, Response, VetisFutureResult,
     hook::{Hook, HookConfig as _, HookPhase},
+    make_bitflags,
     matcher::Matcher,
 };
 
-/// Proxy path
+/// Encode path
 pub struct EncodeHook {
     _config: EncodeHookConfig,
     matcher: Option<Box<dyn Matcher>>,
@@ -16,15 +17,15 @@ unsafe impl Send for EncodeHook {}
 unsafe impl Sync for EncodeHook {}
 
 impl EncodeHook {
-    /// Create a new proxy path with provided configuration
+    /// Create a new encode hook with provided configuration
     ///
     /// # Arguments
     ///
-    /// * `config` - The proxy path configuration
+    /// * `config` - The encode hook configuration
     ///
     /// # Returns
     ///
-    /// * `ProxyHook` - The proxy path
+    /// * `EncodeHook` - The encode hook
     pub fn new(config: EncodeHookConfig) -> EncodeHook {
         let matcher = if let Some(matcher_config) = config.matcher() {
             Some(matcher_config.boxed_matcher())
@@ -41,8 +42,8 @@ impl Hook for EncodeHook {
         if let Some(matcher) = &self.matcher { matcher.is_match(context) } else { true }
     }
 
-    fn phase(&self) -> &HookPhase {
-        &HookPhase::Rewrite
+    fn phases(&self) -> HookPhases {
+        make_bitflags!(HookPhase::Rewrite)
     }
 
     fn matcher_mut(&mut self) -> Option<&mut Box<dyn Matcher>> {
