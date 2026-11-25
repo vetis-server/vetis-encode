@@ -1,15 +1,15 @@
-use crate::EncodeHookConfig;
+use crate::HookConfig;
 use cel::Context;
 use vetis::{
     Request, Response, VetisFutureResult,
-    hook::{Hook, HookConfig as _, HookPhase, HookPhases},
+    hook::{Hook, HookConfig as _, HookPhase},
     matcher::Matcher,
 };
 
 /// Encode path
 pub struct EncodeHook {
-    _config: EncodeHookConfig,
     matcher: Option<Box<dyn Matcher>>,
+    config: HookConfig,
 }
 
 unsafe impl Send for EncodeHook {}
@@ -25,24 +25,33 @@ impl EncodeHook {
     /// # Returns
     ///
     /// * `EncodeHook` - The encode hook
-    pub fn new(config: EncodeHookConfig) -> EncodeHook {
-        let matcher = if let Some(matcher_config) = config.matcher() {
-            Some(matcher_config.boxed_matcher())
-        } else {
-            None
-        };
-
-        EncodeHook { matcher, _config: config }
+    pub fn new(config: HookConfig) -> EncodeHook {
+        EncodeHook { matcher: None, config: config }
     }
 }
 
 impl Hook for EncodeHook {
+    fn setup<'a>(&'a mut self) -> VetisFutureResult<'a, ()> {
+        Box::pin(async move {
+            let matcher = if let Some(matcher_config) = self
+                .config
+                .matcher()
+            {
+                Some(matcher_config.boxed_matcher())
+            } else {
+                None
+            };
+            self.matcher = matcher;
+            Ok(())
+        })
+    }
+
     fn has_matches(&self, context: &Context) -> bool {
         if let Some(matcher) = &self.matcher { matcher.is_match(context) } else { true }
     }
 
-    fn phases(&self) -> HookPhases {
-        HookPhases::new(HookPhase::Rewrite)
+    fn phase(&self) -> HookPhase {
+        HookPhase::PostContent
     }
 
     fn matcher_mut(&mut self) -> Option<&mut Box<dyn Matcher>> {

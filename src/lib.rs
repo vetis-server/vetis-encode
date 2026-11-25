@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 use vetis::{
     VetisHook, VetisResult,
     errors::{ConfigError, VetisError},
-    hook::HookConfig,
     matcher::MatcherConfig,
 };
 
@@ -18,22 +17,21 @@ pub mod tokio;
 #[cfg(test)]
 mod tests;
 
-/// Builder for creating `ProxyHookConfig` instances.
-#[derive(Deserialize)]
-pub struct EncodeHookConfigBuilder {
+/// Builder for creating `HookConfigBuilder` instances.
+pub struct HookConfigBuilder {
     matcher: Option<Box<dyn MatcherConfig>>,
     target: String,
 }
 
-impl EncodeHookConfigBuilder {
+impl HookConfigBuilder {
     /// Allow set a matcher
     ///
     /// # Returns
     ///
     /// * `Self` - The builder.
-    pub fn add_matcher<M>(mut self, matcher: M) -> Self
+    pub fn matcher<M>(mut self, matcher: M) -> Self
     where
-        M: MatcherConfig + Send + Sync + 'static,
+        M: MatcherConfig + 'static,
     {
         self.matcher = Some(Box::new(matcher));
         self
@@ -54,7 +52,7 @@ impl EncodeHookConfigBuilder {
     /// # Returns
     ///
     /// * `VetisResult<ProxyHookConfig>` - The `ProxyHookConfig` with the configured settings.
-    pub fn build(self) -> VetisResult<EncodeHookConfig> {
+    pub fn build(self) -> VetisResult<HookConfig> {
         if self
             .target
             .is_empty()
@@ -64,7 +62,7 @@ impl EncodeHookConfigBuilder {
             )));
         }
 
-        Ok(EncodeHookConfig {
+        Ok(HookConfig {
             matcher: self
                 .matcher
                 .map_or(None, |val| Some(val)),
@@ -75,35 +73,35 @@ impl EncodeHookConfigBuilder {
 
 /// Configuration for a proxy path.
 #[derive(Clone, Serialize, Deserialize)]
-pub struct EncodeHookConfig {
+pub struct HookConfig {
     matcher: Option<Box<dyn MatcherConfig>>,
     target: String,
 }
 
 #[typetag::serde(name = "encode")]
-impl HookConfig for EncodeHookConfig {
+impl vetis::hook::HookConfig for HookConfig {
     fn matcher(&self) -> Option<&Box<dyn MatcherConfig>> {
         self.matcher
             .as_ref()
     }
 
-    fn boxed_clone(&self) -> Box<dyn HookConfig> {
+    fn boxed_clone(&self) -> Box<dyn vetis::hook::HookConfig> {
         Box::new(self.clone())
     }
 
-    fn boxed_hook(&self) -> Box<dyn VetisHook> {
+    fn boxed_hook<'a>(&'a self) -> Box<dyn VetisHook> {
         Box::new(EncodeHook::new(self.clone()))
     }
 }
 
-impl EncodeHookConfig {
-    /// Creates a new `EncodeHookConfigBuilder` with default settings.
+impl HookConfig {
+    /// Creates a new `HookConfigBuilder` with default settings.
     ///
     /// # Returns
     ///
-    /// * `EncodeHookConfigBuilder` - The builder.
-    pub fn builder() -> EncodeHookConfigBuilder {
-        EncodeHookConfigBuilder { matcher: None, target: "http://localhost:8080".to_string() }
+    /// * `HookConfigBuilder` - The builder.
+    pub fn builder() -> HookConfigBuilder {
+        HookConfigBuilder { matcher: None, target: "http://localhost:8080".to_string() }
     }
 
     /// Returns the target of the proxy path.
